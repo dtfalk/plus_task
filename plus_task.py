@@ -65,7 +65,7 @@ def experiment(gametype, data_save_path, outlet, win, subject_name, subject_numb
         if not reset:
             # define the image and put it on the screen
             image.draw()
-            win.n()
+            win.flip()
             
         # end of a trial
         else:
