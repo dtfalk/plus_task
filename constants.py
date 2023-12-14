@@ -20,7 +20,7 @@ screen_size = win_info[0]
 screen_width = win_info[0][0]
 screen_height = win_info[0][1]
 
-# getting the valid letters and numbers for user info
+# getting the valid letters and numbers for user info.
 def get_valid_chars():
     valid_letters = []
     valid_numbers = []

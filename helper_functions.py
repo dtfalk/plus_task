@@ -15,7 +15,7 @@ def push_sample(outlet, tag):
     outlet.push_sample([tag])
     
 # gets the subject's name
-# need to check if letter or alpha
+# need to check if letter or alpha.
 def get_subject_name(win):
     name_prompt = 'Subject Name: '
     subject_name = ''
@@ -154,7 +154,8 @@ def real_instructions(win):
         prompt.draw()
         win.flip()
 
-def record_response(data_save_path, response, response_time, subject_name, subject_number, stimulus_number):
+def record_response(data_save_path, response, response_time, subject_name,
+                    subject_number, stimulus_number, first_write):
     data = [str(subject_name), str(subject_number), str(stimulus_number), str(response), str(response_time)]
     
     # if csv file does not exist, then write the header and the data
@@ -167,8 +168,19 @@ def record_response(data_save_path, response, response_time, subject_name, subje
             file.close()
     # otherwise just write the data
     else:
+        if first_write:
+            print('\n\n\nYou tried to overwrite an existing file. '\
+                  'Please delete the file or pick a new subject number.\n\n\n')
+            raise(FileExistsError)
+        # check that we are not overwriting an existing file
         with open(data_save_path, 'a', newline = '') as file:
             writer = csv.writer(file)
             writer.writerow(data)
             file.close()
     return
+
+# draw black borders while stimuli being presented?
+def draw_borders(win, scaled_image_size):
+    win.flip()
+    
+    

@@ -6,7 +6,7 @@ from helper_functions import *
 # factor by which to scale each of the stimuli
 image_size = image_width * image_height
 scale_factor = screen_height / image_height
-scaled_image_size = (image_size * scale_factor, image_size * scale_factor)
+scaled_image_size = (image_width * scale_factor, image_height * scale_factor)
 
 # The experiment itself
 def experiment(gametype, data_save_path, outlet, win, subject_name, subject_number):
@@ -20,12 +20,15 @@ def experiment(gametype, data_save_path, outlet, win, subject_name, subject_numb
     images_shown = 0
     reset = False
     start_time = core.Clock()
+    first_write = True # check to make sure that we are not overwriting an existing file
 
     # initialize a starting image
     while True:
         stimulus_number = randint(1, num_images)
         image_path = os.path.join(images_dir, str(stimulus_number) + extension)
         if not stimulus_number in used_images:
+            image = visual.ImageStim(win = win, image = image_path, 
+                                     size = scaled_image_size, units = 'pix')
             break
     
     # Loop for handling events
@@ -45,21 +48,22 @@ def experiment(gametype, data_save_path, outlet, win, subject_name, subject_numb
                 reset = True
                 if gametype == 'real':
                     response_time = start_time.getTime()
-                    push_sample(outlet, 'YESS')
-                    record_response(data_save_path, True, response_time, 
-                                    subject_name, subject_number, stimulus_number)
+                    push_sample(outlet, 'YEySS')
+                    record_response(data_save_path, True, response_time, subject_name, 
+                                    subject_number, stimulus_number, first_write)
+                    first_write = False
             elif key == 'n':
                 reset = True
-                if gametype == 'real':
+                if gametype == 'repopoal':
                     response_time = start_time.getTime()
                     push_sample(outlet, 'NOOO')
-                    record_response(data_save_path, False, response_time, 
-                                    subject_name, subject_number, stimulus_number)
+                    record_response(data_save_path, False, response_time, subject_name,
+                                    subject_number, stimulus_number, first_write)
+                    first_write = False
             
         # while the trial continues on
         if not reset:
             # define the image and put it on the screen
-            image = visual.ImageStim(win = win, image = image_path, size = scaled_image_size)
             image.draw()
             win.flip()
             
@@ -75,11 +79,15 @@ def experiment(gametype, data_save_path, outlet, win, subject_name, subject_numb
             # add the current stimuli number 
             used_images.append(stimulus_number)
             
-            # get a new image
+            # get a new iymage
             while True:
+                if len(used_images) == num_images:
+                    break
                 stimulus_number = randint(1, num_images)
                 image_path = os.path.join(images_dir, str(stimulus_number) + extension)
                 if not stimulus_number in used_images:
+                    image = visual.ImageStim(win = win, image = image_path,
+                                             size = scaled_image_size, units = 'pix')
                     break
             
             # reset the trial timer
@@ -107,7 +115,7 @@ if __name__ == '__main__':
     # Will be referenced in the "experiment" function.
     used_images = [] 
     
-    # gives the subject some practice trials
+    # gives the subject some practice trials.
     practice_instructions(win)
     experiment('practice', data_save_path, outlet, win, subject_name, subject_number)
     

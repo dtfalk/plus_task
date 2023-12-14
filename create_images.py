@@ -3,11 +3,11 @@ import os
 import numpy as np
 
 num_images = 1000
-image_width, image_height = 50, 50
+image_width, image_height = 200, 200
 image_size = (image_height, image_width)
 WHITE = (255, 255, 255)
 
-# creates/returns the path to where we save the images
+# creates/returns the path to where we save the images.
 def create_image_folder():
     
     # create the path
