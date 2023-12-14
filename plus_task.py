@@ -115,7 +115,7 @@ if __name__ == '__main__':
     # Will be referenced in the "experiment" function.
     used_images = [] 
     
-    # gives the subject some practice trials
+    # gives the subject some practice trials.
     practice_instructions(win)
     experiment('practice', data_save_path, outlet, win, subject_name, subject_number)
     

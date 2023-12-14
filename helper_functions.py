@@ -15,7 +15,7 @@ def push_sample(outlet, tag):
     outlet.push_sample([tag])
     
 # gets the subject's name
-# need to check if letter or alpha
+# need to check if letter or alpha.
 def get_subject_name(win):
     name_prompt = 'Subject Name: '
     subject_name = ''
