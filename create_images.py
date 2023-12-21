@@ -2,10 +2,13 @@ from PIL import Image
 import os
 import numpy as np
 
-num_images = 20
+num_images = 100
 image_width, image_height = 50, 50
 image_size = (image_height, image_width)
 WHITE = (255, 255, 255)
+
+# true widths are doubled plus one
+widths = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 # creates/returns the path to where we save the images.
 def create_image_folder():
@@ -49,9 +52,6 @@ def create_image_folder():
 # creates the template images for comparison
 def create_templates(temp_image_path, temp_array_path):
     
-    # true widths are doubled plus one
-    widths = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-    
     # find screen center
     horiz_center = image_width // 2
     vert_center = image_height // 2
@@ -76,7 +76,7 @@ def create_templates(temp_image_path, temp_array_path):
         
         # save array
         array_name = os.path.join(temp_array_path, '%d.npy'%(width * 2))
-        np.save(array_name, array)
+        np.save(array_name, np.ceil(array / 255))
     
 # create the requested number of images
 def create_images(stim_image_path, stim_array_path):
@@ -95,7 +95,7 @@ def create_images(stim_image_path, stim_array_path):
         
         # save the array
         array_name = os.path.join(stim_array_path, '%d.npy'%(i + 1))
-        np.save(array_name, array)
+        np.save(array_name, np.ceil(array / 255))
 
 if __name__ == '__main__':
     stim_image_path, stim_array_path, \
