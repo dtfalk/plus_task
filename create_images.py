@@ -1,8 +1,9 @@
 from PIL import Image
 import os
 import numpy as np
+from pylsl import local_clock
 
-num_images = 100
+num_images = int(10 ** 6)
 image_width, image_height = 50, 50
 image_size = (image_height, image_width)
 WHITE = (255, 255, 255)
@@ -98,8 +99,10 @@ def create_images(stim_image_path, stim_array_path):
         np.save(array_name, np.ceil(array / 255))
 
 if __name__ == '__main__':
+    start_time = local_clock()
     stim_image_path, stim_array_path, \
         temp_image_path, temp_array_path = create_image_folder()
     create_templates(temp_image_path, temp_array_path)
     create_images(stim_image_path, stim_array_path)
+    print('runtime: %f'%(local_clock() - start_time))
 

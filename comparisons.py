@@ -87,8 +87,8 @@ def distances(filename, folder, width):
     row_indices, col_indices = np.indices(file.shape)
 
     # Calculate vertical and horizontal distances from the image center
-    vert_distances = np.abs(row_indices - image_height)
-    horiz_distances = np.abs(col_indices - image_width)
+    vert_distances = np.abs(row_indices - image_height / 2) - width
+    horiz_distances = np.abs(col_indices - image_width / 2) - width
 
     # Calculate the minimum distance from the center for each pixel
     # and set it to 0 if within the width of the cross
@@ -98,9 +98,9 @@ def distances(filename, folder, width):
     return distance_matrix.flatten()
 
 # calculates a weight matrix
-def weights(filename, folder, metric, distance_matrix):
+def weights(metric, distance_matrix):
     # creates a matrix of all ones (helps handles divsion by zero)
-    weights_matrix = np.ones_like(distance_matrix)
+    weights_matrix = np.ones_like(distance_matrix, 'float32')
     
     non_zero_distances = distance_matrix != 0
     if 'linear' in metric:
@@ -112,18 +112,12 @@ def weights(filename, folder, metric, distance_matrix):
     elif 'gaussian' in metric:
         weights_matrix[non_zero_distances] = np.exp(-1 * np.square(distance_matrix[non_zero_distances]) / (2 * np.square(sigma)))
     elif 'central' in metric:
-        filepath = os.path.join(folder, filename)
-        file = np.load(filepath)
-        for row, row_list in enumerate(file):
-            for col, _ in enumerate(row_list):
-                distance_to_center = np.sqrt(np.square(row - image_height) + np.square(col - image_width))
-                
-                index = (image_height * row) + col
-                if distance_to_center != 0:
-                    weights_matrix[index] = 1 / distance_to_center
-                    
-                else:
-                    weights_matrix[index] = 1
+        weights_matrix = np.ones((50,50))
+        row_indices, col_indices = np.indices(weights_matrix.shape)
+        distance_to_center = np.sqrt(np.square(row_indices - image_center) + np.square(col_indices - image_center))
+        distance_to_center[distance_to_center == 0] = 0
+        distance_to_center = np.where(np.sqrt(np.square(row_indices - image_center) + np.square(col_indices - image_center)) == 0, 1, distance_to_center)
+        
     return weights_matrix.reshape((50, 50)).copy()
     
 if __name__ == '__main__':
@@ -143,14 +137,7 @@ if __name__ == '__main__':
     for matrix_name, distance_matrix in distance_matrices.items():
         for metric in metric_list:
             metric_name = os.path.basename(split(metric))
-            weights_matrices[matrix_name + '_' + metric_name] = weights(template, temp_arrays_path, metric, distance_matrix)
-    i = 0
-    for matrix_name, matrix in weights_matrices.items():
-        for comp_name, comp_matrix in weights_matrices.items():
-            if np.array_equal(matrix, comp_matrix):
-                i += 1
-                print(matrix_name + ' and ' + comp_name)
-    print(i / 2)
+            weights_matrices[matrix_name + '_' + metric_name] = weights(metric, distance_matrix)
 
     # weighted means of templates as a dictionary
     mean_dict = {}
