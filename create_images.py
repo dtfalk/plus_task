@@ -69,13 +69,13 @@ def create_templates(temp_image_path, temp_array_path):
                     array[j][k] = 255
     
         # create image and save
-        image_name = os.path.join(temp_image_path, '%d.png'%(width * 2))
+        image_name = os.path.join(temp_image_path, 'temp_%d.png'%(width * 2))
         image = Image.fromarray(array.astype(np.uint8), 'L')
         image.save(image_name)
         image.close()
         
         # save array
-        array_name = os.path.join(temp_array_path, '%d.npy'%(width * 2))
+        array_name = os.path.join(temp_array_path, 'temp_%d.npy'%(width * 2))
         np.save(array_name, np.ceil(array / 255))
     
 # create the requested number of images

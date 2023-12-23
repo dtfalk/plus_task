@@ -46,110 +46,86 @@ def get_paths():
         
     return stim_arrays_path, temp_arrays_path, result_files_list
 
-def create_template_means(templates, temp_arrays_path):
-    mean_dict = {}
-    for i, template_filename in enumerate(templates):
-        temp_path = os.path.join(temp_arrays_path, template_filename)
-        template = np.load(temp_path)
-        for metric in metric_list:
-            mean_dict[template_filename + '_' + str(metric)] = weighted_mean(template, metric, widths[i])
-    return mean_dict
 
 def split(string):
     return string.split('.')[0]
 
-# finds the distance of the pixel from the template
-def get_distance(row, col, width):
-    # find vertical and horizontal distance from template cross
-    vert_distance = abs(row - image_center)
-    horiz_distance = abs(col - image_center)
+# get the weighted mean of the image data
+def weighted_mean(array, weight_matrix):
+    weighted_sum = np.sum(weight_matrix * array)
+    total_weight = np.sum(weight_matrix)
     
-    # if either is within the cross itself, return distance = 0
-    if vert_distance <= width or horiz_distance <= width:
-        return 0
-
-    # otherwise return the minimum of the two
-    min(vert_distance, horiz_distance)
-    return min(vert_distance, horiz_distance)
-
-
-# calculates the weight of the pixel
-def get_weight(distance, metric, row, col):
-# calulates the appropriate weight
-    if distance == 0:
-        weight = 1
-    elif 'linear' in metric:
-        weight = 1 / distance
-    elif 'quadratic' in metric:
-        weight = 1 / distance ** 2
-    elif 'logarithmic' in metric:
-        weight = 1 / np.log(distance)
-    elif 'gaussian' in metric:
-        weight = np.exp(-1 * (distance ** 2) / (2 * (sigma ** 2)))
-    elif 'central' in metric:
-        distance_to_center = np.sqrt(((row - image_width / 2) ** 2) + ((col - image_height / 2) ** 2))
-        weight = 1 / distance_to_center
-    elif 'unweighted' in metric:
-        weight = 1
-        
-    return weight
-
-# get the weighted mean of the flattened image data
-def weighted_mean(array, metric, width):
-    numerator = 0
-    denominator = 0
-    for row, row_list in enumerate(array):
-        for col, pixel in enumerate(row_list):
-            
-            # calculates the pixel's distance from the template
-            # and the weight for that pixel 
-            distance = get_distance(row, col, width)
-            weight = get_weight(distance, metric, row, col)
-
-            numerator += weight * int(pixel)
-            denominator += weight
-
-    # calculate mean and return
-    mean = numerator / denominator
-    return mean
+    if total_weight > 0:
+        return weighted_sum / total_weight
+    
+    return 0
 
 # calculates the weighted or unweighted pearsons depending on type
-def pearsons(stimulus, template, stimulus_mean, template_mean, metric, width):
+def pearsons(stimulus, template, stimulus_mean, template_mean, weight_matrix):
 
-    # caclulating the modified pearson coefficient
-    numerator = 0
-    denom_stim = 0 
-    denom_temp = 0
-    for row, row_list in enumerate(stimulus):
-        for col, stim_pixel in enumerate(row_list):
-           
-            # get distance and weight for pixel
-            distance = get_distance(row, col, width)
-            weight = get_weight(distance, metric, row, col)
-
-            
-            # update numerator and denominator
-            base_stim = stim_pixel - stimulus_mean
-            base_temp = template[row][col] - template_mean
-            numerator += weight * base_stim * base_temp
-            denom_stim += weight * (base_stim ** 2)
-            denom_temp += weight * (base_temp ** 2)
-            
-    # calculate final denominator
-    denom_stim = np.sqrt(denom_stim)
-    denom_temp = np.sqrt(denom_temp)
-    denominator = denom_stim * denom_temp
+    base_stim = stimulus - stimulus_mean
+    base_temp = template - template_mean
     
-    # calculate final result
-    result = numerator / denominator
+    numerator = np.sum(weight_matrix * base_stim * base_temp)
+    denom_stim = np.sqrt(np.sum(weight_matrix * np.square(base_stim)))
+    denom_temp = np.sqrt(np.sum(weight_matrix * np.square(base_temp)))
     
-    return result
+    return numerator / (denom_stim * denom_temp)
 
 # Define a key function to extract the numerical part of the filename
 def extract_number(filename):
     # Extract the number from the filename and convert it to an integer
-    return int(filename.split('.')[0])
+    return int(filename.split('.')[0].replace('temp_', ''))
+    
+# calculates a distance matrix
+def distances(filename, folder, width):
+    # Load the file
+    filepath = os.path.join(folder, filename)
+    file = np.load(filepath)
 
+    # Create a grid of row and column indices
+    row_indices, col_indices = np.indices(file.shape)
+
+    # Calculate vertical and horizontal distances from the image center
+    vert_distances = np.abs(row_indices - image_height)
+    horiz_distances = np.abs(col_indices - image_width)
+
+    # Calculate the minimum distance from the center for each pixel
+    # and set it to 0 if within the width of the cross
+    distance_matrix = np.minimum(vert_distances, horiz_distances)
+    distance_matrix = np.where((vert_distances <= width) | (horiz_distances <= width), 0, distance_matrix)
+
+    return distance_matrix.flatten()
+
+# calculates a weight matrix
+def weights(filename, folder, metric, distance_matrix):
+    # creates a matrix of all ones (helps handles divsion by zero)
+    weights_matrix = np.ones_like(distance_matrix)
+    
+    non_zero_distances = distance_matrix != 0
+    if 'linear' in metric:
+        weights_matrix[non_zero_distances] = 1 / distance_matrix[non_zero_distances]
+    elif 'quadratic' in metric:
+        weights_matrix[non_zero_distances] = 1 / np.square(distance_matrix[non_zero_distances])
+    elif 'logarithmic' in metric:
+        weights_matrix[non_zero_distances] = 1 / np.log(distance_matrix[non_zero_distances])
+    elif 'gaussian' in metric:
+        weights_matrix[non_zero_distances] = np.exp(-1 * np.square(distance_matrix[non_zero_distances]) / (2 * np.square(sigma)))
+    elif 'central' in metric:
+        filepath = os.path.join(folder, filename)
+        file = np.load(filepath)
+        for row, row_list in enumerate(file):
+            for col, _ in enumerate(row_list):
+                distance_to_center = np.sqrt(np.square(row - image_height) + np.square(col - image_width))
+                
+                index = (image_height * row) + col
+                if distance_to_center != 0:
+                    weights_matrix[index] = 1 / distance_to_center
+                    
+                else:
+                    weights_matrix[index] = 1
+    return weights_matrix.reshape((50, 50)).copy()
+    
 if __name__ == '__main__':
     start_time = local_clock()
     # various save and load paths
@@ -159,13 +135,38 @@ if __name__ == '__main__':
     stims = sorted(os.listdir(stim_arrays_path), key = extract_number)
     templates = sorted(os.listdir(temp_arrays_path), key = extract_number)
 
+    # calculate a set of weight and distance matrices
+    distance_matrices = {}
+    weights_matrices = {}
+    for i, template in enumerate(templates):
+        distance_matrices[template] = distances(template, temp_arrays_path, widths[i])
+    for matrix_name, distance_matrix in distance_matrices.items():
+        for metric in metric_list:
+            metric_name = os.path.basename(split(metric))
+            weights_matrices[matrix_name + '_' + metric_name] = weights(template, temp_arrays_path, metric, distance_matrix)
+    i = 0
+    for matrix_name, matrix in weights_matrices.items():
+        for comp_name, comp_matrix in weights_matrices.items():
+            if np.array_equal(matrix, comp_matrix):
+                i += 1
+                print(matrix_name + ' and ' + comp_name)
+    print(i / 2)
+
     # weighted means of templates as a dictionary
-    mean_dict = create_template_means(templates, temp_arrays_path)
+    mean_dict = {}
+    for template in templates:
+        for metric in metric_list:
+            filepath = os.path.join(temp_arrays_path, template)
+            file = np.load(filepath)
+            metric_name = os.path.basename(split(metric))
+            weight_matrix = weights_matrices[template + '_' + metric_name]
+            mean_dict[template + '_' + metric] = weighted_mean(file, weight_matrix)
     print('mean calc time: %f'%(local_clock() - start_time))
     
     # perform the weighted vs unweighted pearson tests and save results
     # go over each metric (each metric is stored in a unqiue csv file)
     for metric in metric_list:
+        metric_name = os.path.basename(split(metric))
         
         # open the metric-specific csv file for writing
         with open(metric, 'w', newline = '') as f:
@@ -193,15 +194,13 @@ if __name__ == '__main__':
                     
                     # load stimulus mean if already calculated, otherwise calculate it
                     try:
-                        stimulus_mean = mean_dict[stimulus_filename + '_' + metric]
+                        stimulus_mean = mean_dict[stimulus_filename + '_' + metric + '_' + str(widths[i])]
                     except KeyError:
-                        stimulus_mean = weighted_mean(stimulus, metric, widths[i])
-                        mean_dict[stimulus_filename + '_' + metric] = stimulus_mean
+                        stimulus_mean = weighted_mean(stimulus, weights_matrices[template_filename + '_' + metric_name])
+                        mean_dict[stimulus_filename + '_' + metric + '_' + str(widths[i])] = stimulus_mean
                     
-                    result = pearsons(stimulus, template, stimulus_mean, template_mean, metric, widths[i])
+                    result = pearsons(stimulus, template, stimulus_mean, template_mean, weights_matrices[template_filename + '_' + metric_name])
                     results.append(str(result))
                 write.writerow(results)
             f.close()
     print('runtime: %f'%(local_clock() - start_time))
-    
-    
